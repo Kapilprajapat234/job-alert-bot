@@ -44,18 +44,30 @@ def scrape(keyword: str, location: str) -> list:
     url = f"{BASE_URL}?keywords={quote_plus(keyword)}"
     try:
         resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
+
+        # DEBUG: hamesha status aur title dikhao taki pata chale block page mila ya real page
+        print(f"[Wellfound][DEBUG] '{keyword}' -> HTTP {resp.status_code}, "
+              f"content-length={len(resp.text)}")
+
         if resp.status_code != 200:
-            print(f"[Wellfound] '{keyword}' -> HTTP {resp.status_code}, skipping")
+            print(f"[Wellfound] '{keyword}' -> HTTP {resp.status_code}, skipping. "
+                  f"Body snippet: {resp.text[:300]!r}")
             return jobs
 
         soup = BeautifulSoup(resp.text, "html.parser")
+
+        page_title = soup.title.string if soup.title else "N/A"
+        print(f"[Wellfound][DEBUG] '{keyword}' -> page <title>: {page_title!r}")
+
         script_tag = soup.find("script", id="__NEXT_DATA__")
         if not script_tag or not script_tag.string:
-            print(f"[Wellfound] '{keyword}' -> no __NEXT_DATA__ found, page structure may have changed")
+            print(f"[Wellfound] '{keyword}' -> no __NEXT_DATA__ found, page structure may have "
+                  f"changed OR this is a bot-challenge page. Body snippet: {resp.text[:300]!r}")
             return jobs
 
         data = json.loads(script_tag.string)
         raw_jobs = _find_jobs_in_json(data)
+        print(f"[Wellfound][DEBUG] '{keyword}' -> {len(raw_jobs)} raw job-like objects found in JSON")
 
         for job in raw_jobs[:RESULTS_PER_SEARCH]:
             slug = job.get("slug") or job.get("id")
@@ -76,7 +88,7 @@ def scrape(keyword: str, location: str) -> list:
             })
 
     except Exception as e:
-        print(f"[Wellfound] Error for '{keyword}': {e}")
+        print(f"[Wellfound] Error for '{keyword}': {type(e).__name__}: {e}")
 
     time.sleep(1.5)
     return jobs

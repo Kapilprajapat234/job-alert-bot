@@ -37,12 +37,30 @@ def scrape(keyword: str, location: str) -> list:
     }
     try:
         resp = requests.get(BASE_URL, params=params, headers=NAUKRI_HEADERS, timeout=REQUEST_TIMEOUT)
+
+        # DEBUG: hamesha status aur response ka pehla hissa dikhao
+        print(f"[Naukri][DEBUG] '{keyword}' -> HTTP {resp.status_code}, "
+              f"content-type={resp.headers.get('Content-Type')}")
+
         if resp.status_code != 200:
-            print(f"[Naukri] '{keyword}' -> HTTP {resp.status_code}, skipping")
+            print(f"[Naukri] '{keyword}' -> HTTP {resp.status_code}, skipping. "
+                  f"Body snippet: {resp.text[:300]!r}")
             return jobs
 
-        data = resp.json()
+        try:
+            data = resp.json()
+        except ValueError:
+            print(f"[Naukri] '{keyword}' -> response JSON nahi tha (block page ho sakta hai). "
+                  f"Body snippet: {resp.text[:300]!r}")
+            return jobs
+
         job_details = data.get("jobDetails", [])
+        print(f"[Naukri][DEBUG] '{keyword}' -> response keys: {list(data.keys())}, "
+              f"jobDetails count: {len(job_details)}")
+
+        if not job_details:
+            # Kabhi kabhi Naukri alag key naam use karta hai - unme se kuch print karo
+            print(f"[Naukri][DEBUG] Full data sample (first 500 chars): {str(data)[:500]!r}")
 
         for job in job_details[:RESULTS_PER_SEARCH]:
             link = job.get("jdURL") or job.get("staticUrl")
@@ -62,7 +80,7 @@ def scrape(keyword: str, location: str) -> list:
             })
 
     except Exception as e:
-        print(f"[Naukri] Error for '{keyword}': {e}")
+        print(f"[Naukri] Error for '{keyword}': {type(e).__name__}: {e}")
 
     time.sleep(1.5)
     return jobs
