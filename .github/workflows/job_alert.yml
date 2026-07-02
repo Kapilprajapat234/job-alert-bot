@@ -1,0 +1,36 @@
+name: Job Alert Bot
+
+on:
+  schedule:
+    # Har 6 ghante me chalega (UTC time). Change karna ho to cron edit karo.
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}   # Manual "Run workflow" button ke liye bhi enable
+
+permissions:
+  contents: write
+
+jobs:
+  scrape-and-notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run job scraper
+        run: python main.py
+
+      - name: Commit updated data + dashboard
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "Job Alert Bot"
+          git add data/seen_jobs.csv data/new_jobs_latest_run.csv docs/index.html
+          git diff --staged --quiet || git commit -m "Update job listings [auto]"
+          git push

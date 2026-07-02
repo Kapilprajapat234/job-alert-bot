@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Alert Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #171a23;
+    --border: #262a37;
+    --text: #e8e9ec;
+    --muted: #8b8fa3;
+    --accent: #5b8cff;
+    --new: #34d399;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  .header {
+    max-width: 1100px;
+    margin: 0 auto 20px auto;
+  }
+  h1 { font-size: 24px; margin: 0 0 4px 0; }
+  .sub { color: var(--muted); font-size: 14px; }
+  .controls {
+    max-width: 1100px;
+    margin: 0 auto 16px auto;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  input[type=text] {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 14px;
+  }
+  select {
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text);
+    font-size: 14px;
+  }
+  .stats {
+    max-width: 1100px;
+    margin: 0 auto 16px auto;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .stat b { color: var(--text); font-size: 16px; display: block; }
+  .grid {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    gap: 10px;
+  }
+  .job {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .job-title { font-size: 15px; font-weight: 600; }
+  .job-meta { color: var(--muted); font-size: 13px; margin-top: 3px; }
+  .badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    background: rgba(91,140,255,0.15);
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .badge.new {
+    background: rgba(52,211,153,0.15);
+    color: var(--new);
+  }
+  .apply-btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: white;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .empty { text-align: center; color: var(--muted); padding: 40px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📋 Job Alert Dashboard</h1>
+  <div class="sub">Last updated: 02 Jul 2026, 05:46 PM &middot; Tracking LinkedIn, Naukri, Indeed &amp; Wellfound</div>
+</div>
+
+<div class="stats">
+  <div class="stat"><b id="totalCount">0</b>Total jobs tracked</div>
+  <div class="stat"><b>0</b>New jobs this run</div>
+</div>
+
+<div class="controls">
+  <input type="text" id="searchBox" placeholder="Search by title or company...">
+  <select id="platformFilter">
+    <option value="all">All Platforms</option>
+  </select>
+  <select id="newFilter">
+    <option value="all">All Jobs</option>
+    <option value="new">New Only</option>
+  </select>
+</div>
+
+<div class="grid" id="jobGrid"></div>
+<div class="empty" id="emptyMsg" style="display:none;">Koi job match nahi hua filters se.</div>
+
+<script>
+  const jobs = [];
+  const platforms = [];
+
+  const grid = document.getElementById('jobGrid');
+  const searchBox = document.getElementById('searchBox');
+  const platformFilter = document.getElementById('platformFilter');
+  const newFilter = document.getElementById('newFilter');
+  const emptyMsg = document.getElementById('emptyMsg');
+  const totalCount = document.getElementById('totalCount');
+
+  totalCount.textContent = jobs.length;
+
+  platforms.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p;
+    opt.textContent = p;
+    platformFilter.appendChild(opt);
+  });
+
+  function render() {
+    const q = searchBox.value.toLowerCase();
+    const platform = platformFilter.value;
+    const newOnly = newFilter.value === 'new';
+
+    const filtered = jobs.filter(j => {
+      const matchesQ = !q || (j.title || '').toLowerCase().includes(q) || (j.company || '').toLowerCase().includes(q);
+      const matchesPlatform = platform === 'all' || j.platform === platform;
+      const matchesNew = !newOnly || j.is_new;
+      return matchesQ && matchesPlatform && matchesNew;
+    });
+
+    grid.innerHTML = '';
+    emptyMsg.style.display = filtered.length === 0 ? 'block' : 'none';
+
+    filtered.forEach(j => {
+      const div = document.createElement('div');
+      div.className = 'job';
+      div.innerHTML = `
+        <div>
+          <div class="job-title">${j.title} ${j.is_new === 'True' || j.is_new === true ? '<span class="badge new">NEW</span>' : ''}</div>
+          <div class="job-meta">${j.company} &middot; ${j.location} &middot; <span class="badge">${j.platform}</span></div>
+        </div>
+        <a class="apply-btn" href="${j.link}" target="_blank" rel="noopener">View / Apply</a>
+      `;
+      grid.appendChild(div);
+    });
+  }
+
+  searchBox.addEventListener('input', render);
+  platformFilter.addEventListener('change', render);
+  newFilter.addEventListener('change', render);
+
+  render();
+</script>
+
+</body>
+</html>
